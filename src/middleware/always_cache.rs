@@ -56,6 +56,12 @@ impl<const CACHE_TTL: u32, const WITH_QUERY: bool> AlwaysCacheMiddleware<CACHE_T
         }
         let response = next.run(request).await;
         let (parts, body) = response.into_parts();
+
+        // check if error, if so, return response as is
+        if parts.status.is_client_error() || parts.status.is_server_error() {
+            return Ok(Response::from_parts(parts, body));
+        }
+
         let bytes = body.collect().await?.to_bytes();
         let Json(body) = Json::<Value>::from_bytes(&bytes)?;
         redis

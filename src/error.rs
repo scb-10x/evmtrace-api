@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{anyhow, Error};
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
@@ -12,8 +12,12 @@ impl AppError {
         Self((None, err))
     }
 
-    pub fn status(status: StatusCode, err: Error) -> Self {
-        Self((Some(status), err))
+    pub fn status<E: Into<anyhow::Error>>(status: StatusCode, err: E) -> Self {
+        Self((Some(status), err.into()))
+    }
+
+    pub fn not_found() -> Self {
+        Self::status(StatusCode::NOT_FOUND, anyhow!("Not Found"))
     }
 }
 
