@@ -1,7 +1,5 @@
-use anyhow::anyhow;
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     middleware,
     routing::get,
     Json, Router,
@@ -28,15 +26,17 @@ pub async fn tx_hash(
     State(state): State<AppState>,
 ) -> Result<Json<Value>, AppError> {
     let postgres = state.postgres_pool.get().await?;
+    let chain_id = chain_id.parse::<i64>()?;
 
     let result = postgres
         .query_one(
             "SELECT from_address, to_address, transaction_hash, transaction_index, block_number, value, input, gas_used_total, error FROM transactions WHERE chain_id = $1 AND transaction_hash = $2 LIMIT 1",
-            &[&chain_id.parse::<i64>()?, &hash],
+            &[&chain_id, &hash],
         )
-        .await.map_err(|e| AppError::status(StatusCode::NOT_FOUND, anyhow!(e)))?;
+        .await?;
 
     Ok(Json(json!({
+        "chain_id": chain_id,
         "data": {
             "from_address": result.try_get::<_, String>("from_address")?,
             "to_address": result.try_get::<_, String>("to_address")?,
