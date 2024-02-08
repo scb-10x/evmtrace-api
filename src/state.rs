@@ -9,6 +9,8 @@ use crate::config::CONFIG;
 
 pub static STATE: Lazy<State> = Lazy::new(|| State::new().expect("Failed to create state"));
 
+pub type AppState = State;
+
 #[derive(Clone)]
 pub struct State {
     pub postgres_pool: PostgresPool,

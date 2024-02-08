@@ -68,7 +68,7 @@ pub async fn block_txs(
 
     let results = postgres
         .query(
-            "SELECT from_address, to_address, transaction_hash, transaction_index, value, gas_used_total, error, function_signature FROM transactions WHERE chain_id = $1 AND block_number = $2",
+            "SELECT from_address, to_address, transaction_hash, transaction_index, value, gas_used_total, error, function_signature, block_number FROM transactions WHERE chain_id = $1 AND block_number = $2",
             &[&chain_id, &block_number],
         )
         .await?;
@@ -84,6 +84,7 @@ pub async fn block_txs(
                 "gas_used_total": result.try_get::<_, i64>("gas_used_total")?,
                 "error": result.try_get::<_, Option<String>>("error")?,
                 "function_signature": result.try_get::<_, String>("function_signature")?,
+                "block_number": result.try_get::<_, i64>("block_number")?,
             }))
         })
         .collect::<Result<Vec<_>, AppError>>()?;
