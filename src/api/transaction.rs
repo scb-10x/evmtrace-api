@@ -28,12 +28,13 @@ pub async fn tx_hash(
     let postgres = state.postgres_pool.get().await?;
     let chain_id = chain_id.parse::<i64>()?;
 
-    let result = postgres
-        .query_one(
-            "SELECT from_address, to_address, transaction_hash, transaction_index, block_number, value, input, gas_used_total, error FROM transactions WHERE chain_id = $1 AND transaction_hash = $2 LIMIT 1",
+    let results = postgres
+        .query(
+            "SELECT from_address, to_address, transaction_hash, transaction_index, block_number, value, input, gas_used_total, error, function_signature FROM transactions WHERE chain_id = $1 AND transaction_hash = $2 LIMIT 1",
             &[&chain_id, &hash],
         )
         .await?;
+    let result = results.get(0).ok_or_else(AppError::not_found)?;
 
     Ok(Json(json!({
         "chain_id": chain_id,
@@ -47,6 +48,7 @@ pub async fn tx_hash(
             "input": result.try_get::<_, String>("input")?,
             "gas_used_total": result.try_get::<_, i64>("gas_used_total")?,
             "error": result.try_get::<_, Option<String>>("error")?,
+            "function_signature": result.try_get::<_, Option<String>>("function_signature")?,
         }
     })))
 }
