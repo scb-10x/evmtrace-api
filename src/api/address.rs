@@ -1,9 +1,12 @@
+use std::str::FromStr;
+
 use axum::{
     extract::{Path, Query, State},
     middleware,
     routing::get,
     Json, Router,
 };
+use ethers_core::{types::Address, utils::to_checksum};
 use serde_json::{from_str, json, Number, Value};
 
 use crate::{
@@ -30,6 +33,7 @@ pub async fn address(
 ) -> Result<Json<Value>, AppError> {
     let postgres = state.postgres_pool.get().await?;
     let chain_id = chain_id.parse::<i64>()?;
+    let address = to_checksum(&Address::from_str(&address)?, None);
 
     let results = postgres
         .query(
