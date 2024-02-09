@@ -17,8 +17,8 @@ pub const DEFAULT_CACHE_TTL: u32 = 10;
 /// false
 pub const DEFAULT_WITH_QUERY: bool = false;
 
-pub type DefaultAlwaysCacheMiddleware =
-    AlwaysCacheMiddleware<DEFAULT_CACHE_TTL, DEFAULT_WITH_QUERY>;
+/// To be used with account and latest endpoints
+pub type ShortAlwaysCacheMiddleware<const WITH_QUERY: bool> = AlwaysCacheMiddleware<5, WITH_QUERY>;
 pub type AlwaysCacheWithQueryMiddleware<const CACHE_TTL: u32> =
     AlwaysCacheMiddleware<CACHE_TTL, true>;
 pub type AlwaysCacheWithoutQueryMiddleware<const CACHE_TTL: u32> =

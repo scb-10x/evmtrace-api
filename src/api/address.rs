@@ -11,7 +11,7 @@ use serde_json::{from_str, json, Number, Value};
 
 use crate::{
     error::AppError,
-    middleware::AlwaysCacheWithQueryMiddleware,
+    middleware::ShortAlwaysCacheMiddleware,
     state::{AppState, STATE},
     types::Pagination,
 };
@@ -21,8 +21,7 @@ pub fn routes() -> Router<AppState> {
         .route("/:chain-id/:address", get(address))
         .route_layer(middleware::from_fn_with_state(
             STATE.clone(),
-            // 10 seconds cache with query
-            AlwaysCacheWithQueryMiddleware::<10>::handler,
+            ShortAlwaysCacheMiddleware::<true>::handler,
         ))
 }
 
@@ -38,17 +37,14 @@ pub async fn address(
     let results = postgres
         .query(
             "
-                WITH c AS (
-                	SELECT * FROM transactions WHERE chain_id = $1
-                ),
                 tb AS (
-                	SELECT *, 'recovered' AS type FROM transactions WHERE $2 = ANY(ec_recover_addresses)
+                	SELECT *, 'recovered' AS type FROM transactions WHERE chain_id = $1 AND $2 = ANY(ec_recover_addresses)
                 	UNION ALL
-                	SELECT *, 'from' AS type FROM transactions WHERE from_address = $2
+                	SELECT *, 'from' AS type FROM transactions WHERE chain_id = $1 AND from_address = $2
                 	UNION ALL
-                	SELECT *, 'to' AS type FROM transactions WHERE to_address = $2
+                	SELECT *, 'to' AS type FROM transactions WHERE chain_id = $1 AND to_address = $2
                 )
-                SELECT from_address, to_address, transaction_hash, transaction_index, value, gas_used_total, error, function_signature, block_number, type FROM tb ORDER BY block_number DESC OFFSET $3 LIMIT $4
+                SELECT from_address, to_address, transaction_hash, transaction_index, value, gas_used_total, error, function_signature, block_number, type FROM tb ORDER BY id DESC OFFSET $3 LIMIT $4
             ",
             &[
                 &chain_id,

@@ -4,6 +4,7 @@ use crate::state::State;
 
 pub mod address;
 pub mod block;
+pub mod latest;
 pub mod transaction;
 
 pub fn routes() -> Router<State> {
@@ -11,4 +12,5 @@ pub fn routes() -> Router<State> {
         .nest("/tx", transaction::routes())
         .nest("/block", block::routes())
         .nest("/address", address::routes())
+        .nest("/latest", latest::routes())
 }
