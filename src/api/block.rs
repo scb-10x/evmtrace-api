@@ -8,7 +8,7 @@ use serde_json::{from_str, json, Number, Value};
 
 use crate::{
     error::AppError,
-    middleware::DefaultAlwaysCacheMiddleware,
+    middleware::LongAlwaysCacheMiddleware,
     state::{State as AppState, STATE},
 };
 
@@ -18,7 +18,7 @@ pub fn routes() -> Router<AppState> {
         .route("/:chain-id/:block-number/txs", get(block_txs))
         .route_layer(middleware::from_fn_with_state(
             STATE.clone(),
-            DefaultAlwaysCacheMiddleware::handler,
+            LongAlwaysCacheMiddleware::<false>::handler,
         ))
 }
 
