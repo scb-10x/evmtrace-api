@@ -37,7 +37,7 @@ pub async fn address(
     let results = postgres
         .query(
             "
-                tb AS (
+                WITH tb AS (
                 	SELECT *, 'recovered' AS type FROM transactions WHERE chain_id = $1 AND $2 = ANY(ec_recover_addresses)
                 	UNION ALL
                 	SELECT *, 'from' AS type FROM transactions WHERE chain_id = $1 AND from_address = $2
