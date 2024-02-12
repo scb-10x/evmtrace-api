@@ -28,7 +28,7 @@ pub async fn latest_block(State(state): State<AppState>) -> Result<Json<Value>, 
             txs AS (
             	SELECT *, COUNT(*) AS rtc FROM latest_txs GROUP BY chain_id, block_number
             )
-            SELECT blocks.chain_id, number, timestamp, hash, transaction_count, COALESCE(txs.rtc, 0) AS related_transaction_count FROM blocks LEFT JOIN txs ON blocks.chain_id = txs.chain_id AND blocks.number = txs.block_number ORDER BY id DESC LIMIT 20
+            SELECT blocks.chain_id, number, timestamp, hash, transaction_count, txs.rtc AS related_transaction_count FROM blocks LEFT JOIN txs ON blocks.chain_id = txs.chain_id AND blocks.number = txs.block_number WHERE txs.rtc > 0 ORDER BY timestamp DESC, id DESC LIMIT 30
             ",
             &[],
         )
@@ -58,10 +58,10 @@ pub async fn latest_txs(State(state): State<AppState>) -> Result<Json<Value>, Ap
         .query(
             "
             WITH lb AS (
-            	SELECT chain_id, number, timestamp FROM blocks ORDER BY id DESC LIMIT 100
+            	SELECT chain_id, number, timestamp FROM blocks ORDER BY id DESC LIMIT 1000
             ),
-            ltxs AS (SELECT lb.chain_id, lb.number, lb.timestamp, transaction_hash, from_address, to_address, value, error FROM transactions INNER JOIN lb ON lb.chain_id = transactions.chain_id AND lb.number = transactions.block_number ORDER BY id DESC LIMIT 50)
-            SELECT * FROM ltxs ORDER BY timestamp DESC
+            ltxs AS (SELECT lb.chain_id, lb.number as block_number, lb.timestamp as block_timestamp, transaction_hash, from_address, to_address, value, error, transaction_index FROM transactions INNER JOIN lb ON lb.chain_id = transactions.chain_id AND lb.number = transactions.block_number ORDER BY id DESC LIMIT 50)
+            SELECT * FROM ltxs ORDER BY block_timestamp DESC, block_number DESC 
             ",
             &[],
         )
@@ -71,9 +71,10 @@ pub async fn latest_txs(State(state): State<AppState>) -> Result<Json<Value>, Ap
         .map(|row| {
             Ok(json!({
                 "chain_id": row.try_get::<_, i64>("chain_id")?,
-                "number": row.try_get::<_, i64>("number")?,
-                "timestamp": row.try_get::<_, i64>("timestamp")?,
+                "block_number": row.try_get::<_, i64>("block_number")?,
+                "block_timestamp": row.try_get::<_, i64>("block_timestamp")?,
                 "transaction_hash": row.try_get::<_, String>("transaction_hash")?,
+                "transaction_index": row.try_get::<_, i32>("transaction_index")?,
                 "from_address": row.try_get::<_, String>("from_address")?,
                 "to_address": row.try_get::<_, String>("to_address")?,
                 "value": from_str::<Number>(&row.try_get::<_, String>("value")?)?,
