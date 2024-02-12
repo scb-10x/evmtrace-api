@@ -16,13 +16,14 @@ use crate::{
     types::Pagination,
 };
 
-pub fn routes() -> Router<AppState> {
+pub fn routes() -> Router<()> {
     Router::new()
         .route("/:chain-id/:address", get(address))
         .route_layer(middleware::from_fn_with_state(
             STATE.clone(),
             ShortAlwaysCacheMiddleware::<true>::handler,
         ))
+        .with_state(STATE.clone())
 }
 
 pub async fn address(

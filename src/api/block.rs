@@ -12,7 +12,7 @@ use crate::{
     state::{State as AppState, STATE},
 };
 
-pub fn routes() -> Router<AppState> {
+pub fn routes() -> Router<()> {
     Router::new()
         .route("/:chain-id/:block-number", get(block))
         .route("/:chain-id/:block-number/txs", get(block_txs))
@@ -20,6 +20,7 @@ pub fn routes() -> Router<AppState> {
             STATE.clone(),
             LongAlwaysCacheMiddleware::<false>::handler,
         ))
+        .with_state(STATE.clone())
 }
 
 pub async fn block(

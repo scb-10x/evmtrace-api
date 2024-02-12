@@ -10,7 +10,7 @@ use log::{error, info};
 use tokio::net::TcpListener;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
-use zkscan_api::{api, config::CONFIG, state::STATE};
+use zkscan_api::{api, config::CONFIG};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -39,9 +39,7 @@ async fn main() -> Result<(), Error> {
         .compact()
         .init();
 
-    let app = Router::new()
-        .nest("/api/v1/", api::routes())
-        .with_state(STATE.clone());
+    let app = Router::new().nest("/api/v1/", api::routes());
     let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, CONFIG.port)).await?;
     info!("Server is listening on http://0.0.0.0:{}", CONFIG.port,);
     serve(listener, app)

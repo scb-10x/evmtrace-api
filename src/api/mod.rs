@@ -1,13 +1,11 @@
 use axum::Router;
 
-use crate::state::State;
-
 pub mod address;
 pub mod block;
 pub mod latest;
 pub mod transaction;
 
-pub fn routes() -> Router<State> {
+pub fn routes() -> Router<()> {
     Router::new()
         .nest("/tx", transaction::routes())
         .nest("/block", block::routes())

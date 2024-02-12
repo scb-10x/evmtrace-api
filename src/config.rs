@@ -7,7 +7,7 @@ use structstruck::strike;
 pub static CONFIG: Lazy<Config> = Lazy::new(Config::new);
 
 strike! {
-    #[strikethrough[derive(Debug, Clone, Serialize, Deserialize)]]
+    #[strikethrough[derive(Debug, Clone, Serialize, Deserialize, Default)]]
     pub struct Config {
         pub postgres:
             pub struct {

@@ -12,13 +12,14 @@ use crate::{
     state::{State as AppState, STATE},
 };
 
-pub fn routes() -> Router<AppState> {
+pub fn routes() -> Router<()> {
     Router::new()
         .route("/:chain-id/:hash", get(tx_hash))
         .route_layer(middleware::from_fn_with_state(
             STATE.clone(),
             LongAlwaysCacheMiddleware::<false>::handler,
         ))
+        .with_state(STATE.clone())
 }
 
 pub async fn tx_hash(
