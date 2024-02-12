@@ -40,7 +40,6 @@ pub fn routes() -> Router<()> {
                 let (latest_txs, latest_block) = try_join!(get_latest_txs(), get_latest_block())?;
                 latest_txs_tx.send_replace(latest_txs);
                 latest_blocks_tx.send_replace(latest_block);
-                debug!("Updated latest blocks and txs");
             }
             Ok::<(), Error>(())
         }
@@ -141,7 +140,6 @@ pub async fn latest_block_sse(
     let mut rx = state.latest_blocks_rx.clone();
     Sse::new(try_stream! {
         while let Ok(()) = rx.changed().await {
-            debug!("latest_block_sse");
             let data = state.latest_blocks_rx.borrow().clone();
             yield Event::default().json_data(data)?;
         }
