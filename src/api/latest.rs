@@ -12,10 +12,11 @@ use axum::{
     Json, Router,
 };
 use futures_util::{Stream, StreamExt};
-use log::{debug, error};
+use log::error;
 use serde_json::{from_str, json, Number, Value};
 use tokio::{sync::watch, time::interval, try_join};
 use tokio_stream::wrappers::IntervalStream;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::{error::AppError, state::STATE};
 
@@ -56,6 +57,7 @@ pub fn routes() -> Router<()> {
         .route("/blocks/sse", get(latest_block_sse))
         .route("/txs/sse", get(latest_txs_sse))
         .with_state(state)
+        .route_layer(CorsLayer::new().allow_origin(Any))
 }
 
 pub async fn get_latest_block() -> Result<Value, Error> {
