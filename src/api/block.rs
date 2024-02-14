@@ -69,7 +69,7 @@ pub async fn block_txs(
 
     let results = postgres
         .query(
-            "SELECT from_address, to_address, transaction_hash, transaction_index, value, error, function_signature, ec_pairing_count, ec_recover_addresses, sig_names.name AS function_name FROM transactions LEFT JOIN sig_names ON transactions.function_signature = sig_names.sig WHERE chain_id = $1 AND block_number = $2",
+            "SELECT from_address, to_address, transaction_hash, transaction_index, value, error, function_signature, ec_pairing_count, ec_recover_addresses, sig_names.name AS function_name, gas_used_total, gas_used_first_degree FROM transactions LEFT JOIN sig_names ON transactions.function_signature = sig_names.sig WHERE chain_id = $1 AND block_number = $2",
             &[&chain_id, &block_number],
         )
         .await?;
@@ -77,6 +77,7 @@ pub async fn block_txs(
         .iter()
         .map(|result| {
             Ok(json!({
+                "chain_id": chain_id,
                 "from_address": result.try_get::<_, String>("from_address")?,
                 "to_address": result.try_get::<_, String>("to_address")?,
                 "transaction_hash": result.try_get::<_, String>("transaction_hash")?,
@@ -87,6 +88,8 @@ pub async fn block_txs(
                 "function_name": result.try_get::<_, Option<String>>("function_name")?,
                 "ec_pairing_count": result.try_get::<_, i16>("ec_pairing_count")?,
                 "ec_recover_addresses": result.try_get::<_, Vec<String>>("ec_recover_addresses")?,
+                "gas_used_total": result.try_get::<_, i64>("gas_used_total")?,
+                "gas_used_first_degree": result.try_get::<_, i64>("gas_used_first_degree")?,
             }))
         })
         .collect::<Result<Vec<_>, AppError>>()?;
