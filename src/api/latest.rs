@@ -36,7 +36,7 @@ pub fn routes() -> Router<()> {
 
     tokio::spawn(async move {
         if let Err(e) = async {
-            let mut interval = IntervalStream::new(interval(Duration::from_secs(5)));
+            let mut interval = IntervalStream::new(interval(Duration::from_secs(3)));
             while let Some(_) = interval.next().await {
                 let (latest_txs, latest_block) = try_join!(get_latest_txs(), get_latest_block())?;
                 latest_txs_tx.send_replace(latest_txs);
@@ -71,7 +71,7 @@ pub async fn get_latest_block() -> Result<Value, Error> {
             txs AS (
             	SELECT *, COUNT(*) AS rtc FROM latest_txs GROUP BY chain_id, block_number
             )
-            SELECT blocks.chain_id, number, timestamp, hash, transaction_count, txs.rtc AS related_transaction_count FROM blocks LEFT JOIN txs ON blocks.chain_id = txs.chain_id AND blocks.number = txs.block_number WHERE txs.rtc > 0 ORDER BY timestamp DESC, id DESC LIMIT 30
+            SELECT blocks.chain_id, number, timestamp, hash, transaction_count, txs.rtc AS related_transaction_count, gas_limit, gas_used FROM blocks LEFT JOIN txs ON blocks.chain_id = txs.chain_id AND blocks.number = txs.block_number WHERE txs.rtc > 0 ORDER BY timestamp DESC, id DESC LIMIT 20
             ",
             &[],
         )
@@ -86,6 +86,8 @@ pub async fn get_latest_block() -> Result<Value, Error> {
                 "hash": row.try_get::<_, String>("hash")?,
                 "transaction_count": row.try_get::<_, i32>("transaction_count")?,
                 "related_transaction_count": row.try_get::<_, i64>("related_transaction_count")?,
+                "gas_limit": row.try_get::<_, i64>("gas_limit")?,
+                "gas_used": row.try_get::<_, i64>("gas_used")?,
             }))
         })
         .collect::<Result<Vec<_>, Error>>()?;
@@ -103,7 +105,7 @@ pub async fn get_latest_txs() -> Result<Value, Error> {
             WITH lb AS (
             	SELECT chain_id, number, timestamp FROM blocks ORDER BY id DESC LIMIT 1000
             ),
-            ltxs AS (SELECT lb.chain_id, lb.number as block_number, lb.timestamp as block_timestamp, transaction_hash, from_address, to_address, value, error, transaction_index FROM transactions INNER JOIN lb ON lb.chain_id = transactions.chain_id AND lb.number = transactions.block_number ORDER BY id DESC LIMIT 50)
+            ltxs AS (SELECT lb.chain_id, lb.number as block_number, lb.timestamp as block_timestamp, transaction_hash, from_address, to_address, value, error, transaction_index, ec_pairing_count, ec_recover_addresses FROM transactions INNER JOIN lb ON lb.chain_id = transactions.chain_id AND lb.number = transactions.block_number ORDER BY id DESC LIMIT 30)
             SELECT * FROM ltxs ORDER BY block_timestamp DESC, block_number DESC 
             ",
             &[],
@@ -121,7 +123,9 @@ pub async fn get_latest_txs() -> Result<Value, Error> {
                 "from_address": row.try_get::<_, String>("from_address")?,
                 "to_address": row.try_get::<_, String>("to_address")?,
                 "value": from_str::<Number>(&row.try_get::<_, String>("value")?)?,
-                "error": row.try_get::<_, Option<String>>("error")?
+                "error": row.try_get::<_, Option<String>>("error")?,
+                "ec_pairing_count": row.try_get::<_, i16>("ec_pairing_count")?,
+                "ec_recover_addresses": row.try_get::<_, Vec<String>>("ec_recover_addresses")?,
             }))
         })
         .collect::<Result<Vec<_>, Error>>()?;
