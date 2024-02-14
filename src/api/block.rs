@@ -40,8 +40,8 @@ pub async fn block(
     let result = results.get(0).ok_or_else(AppError::not_found)?;
 
     Ok(Json(json!({
-        "chain_id": chain_id,
         "data": {
+            "chain_id": chain_id,
             "number": result.try_get::<_, i64>("number")?,
             "timestamp": result.try_get::<_, i64>("timestamp")?,
             "hash": result.try_get::<_, String>("hash")?,
@@ -69,7 +69,7 @@ pub async fn block_txs(
 
     let results = postgres
         .query(
-            "SELECT from_address, to_address, transaction_hash, transaction_index, value, gas_used_total, error, function_signature, block_number FROM transactions WHERE chain_id = $1 AND block_number = $2",
+            "SELECT from_address, to_address, transaction_hash, transaction_index, value, error, function_signature, ec_pairing_count, ec_recover_addresses, sig_names.name AS function_name FROM transactions LEFT JOIN sig_names ON transactions.function_signature = sig_names.sig WHERE chain_id = $1 AND block_number = $2",
             &[&chain_id, &block_number],
         )
         .await?;
@@ -82,17 +82,16 @@ pub async fn block_txs(
                 "transaction_hash": result.try_get::<_, String>("transaction_hash")?,
                 "transaction_index": result.try_get::<_, i32>("transaction_index")?,
                 "value": from_str::<Number>(&result.try_get::<_, String>("value")?)?,
-                "gas_used_total": result.try_get::<_, i64>("gas_used_total")?,
                 "error": result.try_get::<_, Option<String>>("error")?,
                 "function_signature": result.try_get::<_, String>("function_signature")?,
-                "block_number": result.try_get::<_, i64>("block_number")?,
+                "function_name": result.try_get::<_, Option<String>>("function_name")?,
+                "ec_pairing_count": result.try_get::<_, i16>("ec_pairing_count")?,
+                "ec_recover_addresses": result.try_get::<_, Vec<String>>("ec_recover_addresses")?,
             }))
         })
         .collect::<Result<Vec<_>, AppError>>()?;
 
     Ok(Json(json!({
-        "chain_id": chain_id,
-        "block_number": block_number,
         "data": datas
     })))
 }

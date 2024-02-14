@@ -99,16 +99,14 @@ pub async fn get_latest_block() -> Result<Value, Error> {
 
 pub async fn get_latest_txs() -> Result<Value, Error> {
     let postgres = STATE.postgres_pool.get().await?;
+    let limit = 30i64;
     let results = postgres
         .query(
             "
-            WITH lb AS (
-            	SELECT chain_id, number, timestamp FROM blocks ORDER BY id DESC LIMIT 1000
-            ),
-            ltxs AS (SELECT lb.chain_id, lb.number as block_number, lb.timestamp as block_timestamp, transaction_hash, from_address, to_address, value, error, transaction_index, ec_pairing_count, ec_recover_addresses FROM transactions INNER JOIN lb ON lb.chain_id = transactions.chain_id AND lb.number = transactions.block_number ORDER BY id DESC LIMIT 30)
-            SELECT * FROM ltxs ORDER BY block_timestamp DESC, block_number DESC 
+            WITH ltxs AS (SELECT blocks.chain_id, blocks.number as block_number, blocks.timestamp as block_timestamp, transaction_hash, from_address, to_address, value, error, transaction_index, function_signature, ec_pairing_count, ec_recover_addresses FROM transactions INNER JOIN blocks ON blocks.chain_id = transactions.chain_id AND blocks.number = transactions.block_number ORDER BY transactions.id DESC LIMIT $1)
+            SELECT ltxs.*, sig_names.name as function_name FROM ltxs LEFT JOIN sig_names ON ltxs.function_signature = sig_names.sig ORDER BY block_timestamp DESC, block_number DESC, transaction_index ASC
             ",
-            &[],
+            &[&limit],
         )
         .await?;
     let datas = results
@@ -126,6 +124,8 @@ pub async fn get_latest_txs() -> Result<Value, Error> {
                 "error": row.try_get::<_, Option<String>>("error")?,
                 "ec_pairing_count": row.try_get::<_, i16>("ec_pairing_count")?,
                 "ec_recover_addresses": row.try_get::<_, Vec<String>>("ec_recover_addresses")?,
+                "function_signature": row.try_get::<_, String>("function_signature")?,
+                "function_name": row.try_get::<_, Option<String>>("function_name")?,
             }))
         })
         .collect::<Result<Vec<_>, Error>>()?;
