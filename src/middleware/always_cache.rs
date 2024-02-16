@@ -52,11 +52,14 @@ impl<const CACHE_TTL: u32, const WITH_QUERY: bool> AlwaysCacheMiddleware<CACHE_T
         );
         debug!("Checking cache for key: {}", key);
         let cached_response = redis.get::<&str, Option<String>>(&key).await?;
-        if let Some(cached_response) = cached_response {
-            debug!("Cache hit!");
-            return Ok(Json(from_str::<Value>(&cached_response)?).into_response());
-        } else {
-            debug!("Cache miss! Running handler...");
+        match cached_response {
+            Some(cached_response) => {
+                debug!("Cache hit!");
+                return Ok(Json(from_str::<Value>(&cached_response)?).into_response());
+            }
+            None => {
+                debug!("Cache miss! Running handler...");
+            }
         }
         let response = next.run(request).await;
         let (parts, body) = response.into_parts();
