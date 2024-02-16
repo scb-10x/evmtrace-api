@@ -6,19 +6,13 @@ use axum::{
     Json,
 };
 use http_body_util::BodyExt;
-use log::debug;
 use redis::AsyncCommands;
 use serde_json::{from_str, Value};
 
 use crate::{error::AppError, state::State as AppState};
 
-/// 10 seconds
-pub const DEFAULT_CACHE_TTL: u32 = 10;
-/// false
-pub const DEFAULT_WITH_QUERY: bool = false;
-
 /// To be used with account and latest endpoints
-pub type ShortAlwaysCacheMiddleware<const WITH_QUERY: bool> = AlwaysCacheMiddleware<5, WITH_QUERY>;
+pub type ShortAlwaysCacheMiddleware<const WITH_QUERY: bool> = AlwaysCacheMiddleware<10, WITH_QUERY>;
 /// To be used with block and txs endpoints
 pub type LongAlwaysCacheMiddleware<const WITH_QUERY: bool> =
     AlwaysCacheMiddleware<3600, WITH_QUERY>;
@@ -29,10 +23,7 @@ pub type AlwaysCacheWithoutQueryMiddleware<const CACHE_TTL: u32> =
     AlwaysCacheMiddleware<CACHE_TTL, false>;
 
 #[derive(Copy, Clone)]
-pub struct AlwaysCacheMiddleware<
-    const CACHE_TTL: u32 = DEFAULT_CACHE_TTL,
-    const WITH_QUERY: bool = DEFAULT_WITH_QUERY,
->;
+pub struct AlwaysCacheMiddleware<const CACHE_TTL: u32, const WITH_QUERY: bool>;
 
 impl<const CACHE_TTL: u32, const WITH_QUERY: bool> AlwaysCacheMiddleware<CACHE_TTL, WITH_QUERY> {
     pub async fn handler(
@@ -50,13 +41,10 @@ impl<const CACHE_TTL: u32, const WITH_QUERY: bool> AlwaysCacheMiddleware<CACHE_T
             },
             request.method()
         );
-        debug!("Checking cache for key: {}", key);
         let cached_response = redis.get::<&str, Option<String>>(&key).await?;
         if let Some(cached_response) = cached_response {
-            debug!("Cache hit!");
             return Ok(Json(from_str::<Value>(&cached_response)?).into_response());
         }
-        debug!("Cache miss! Running handler...");
         let response = next.run(request).await;
         let (parts, body) = response.into_parts();
 
