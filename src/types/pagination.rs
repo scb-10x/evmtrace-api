@@ -8,7 +8,7 @@ pub struct Pagination {
 
 impl Pagination {
     pub fn offset(&self) -> i64 {
-        self.page.unwrap_or(0).max(10) * self.limit()
+        self.page.unwrap_or(0).min(10) * self.limit()
     }
 
     pub fn limit(&self) -> i64 {
