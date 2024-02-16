@@ -38,7 +38,7 @@ pub async fn address(
         .query(
             "
                 WITH tb AS (
-                	SELECT * FROM transactions WHERE from_address = $1 OR to_address = $1 OR $1 = ANY(ec_recover_addresses) OR $1 = ANY(closest_address)
+                	SELECT * FROM transactions WHERE from_address = $1 OR to_address = $1 OR ARRAY[$1]::VARCHAR(42)[] @> ec_recover_addresses OR ARRAY[$1]::VARCHAR(42)[] @> closest_address
                 )
                 SELECT chain_id, from_address, to_address, closest_address, transaction_hash, transaction_index, value, error, function_signature, sig_names.name AS function_name, block_number, ec_pairing_count, ec_recover_addresses FROM tb LEFT JOIN sig_names ON tb.function_signature = sig_names.sig ORDER BY tb.id DESC OFFSET $2 LIMIT $3
             ",
