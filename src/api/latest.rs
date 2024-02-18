@@ -9,16 +9,15 @@ use axum::{
         Sse,
     },
     routing::get,
-    Json, Router,
+    Router,
 };
 use futures_util::{Stream, StreamExt};
 use log::error;
 use serde_json::{from_str, json, Number, Value};
 use tokio::{sync::watch, time::interval, try_join};
 use tokio_stream::wrappers::IntervalStream;
-use tower_http::cors::{Any, CorsLayer};
 
-use crate::{error::AppError, state::STATE};
+use crate::state::STATE;
 
 pub struct LatestState {
     latest_blocks_rx: watch::Receiver<Value>,
@@ -52,12 +51,9 @@ pub fn routes() -> Router<()> {
     });
 
     Router::new()
-        .route("/blocks", get(latest_block))
-        .route("/txs", get(latest_txs))
         .route("/blocks/sse", get(latest_block_sse))
         .route("/txs/sse", get(latest_txs_sse))
         .with_state(state)
-        .route_layer(CorsLayer::new().allow_origin(Any))
 }
 
 pub async fn get_latest_block() -> Result<Value, Error> {
@@ -135,11 +131,6 @@ pub async fn get_latest_txs() -> Result<Value, Error> {
     }))
 }
 
-pub async fn latest_block(State(state): State<Arc<LatestState>>) -> Result<Json<Value>, AppError> {
-    let lastest_blocks = state.latest_blocks_rx.borrow().clone();
-    Ok(Json(lastest_blocks))
-}
-
 pub async fn latest_block_sse(
     State(state): State<Arc<LatestState>>,
 ) -> Sse<impl Stream<Item = Result<Event, Error>>> {
@@ -151,11 +142,6 @@ pub async fn latest_block_sse(
         }
     })
     .keep_alive(KeepAlive::default())
-}
-
-pub async fn latest_txs(State(state): State<Arc<LatestState>>) -> Result<Json<Value>, AppError> {
-    let lastest_txs = state.latest_txs_rx.borrow().clone();
-    Ok(Json(lastest_txs))
 }
 
 pub async fn latest_txs_sse(
