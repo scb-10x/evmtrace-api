@@ -12,12 +12,13 @@ use axum::{
     Router,
 };
 use futures_util::{Stream, StreamExt};
-use log::error;
+use log::{error, info};
 use serde_json::{from_str, json, Number, Value};
 use tokio::{sync::watch, time::interval, try_join};
 use tokio_stream::wrappers::IntervalStream;
+use tower_http::cors::{Any, CorsLayer};
 
-use crate::state::STATE;
+use crate::{config::CONFIG, state::STATE};
 
 pub struct LatestState {
     latest_blocks_rx: watch::Receiver<Value>,
@@ -50,10 +51,17 @@ pub fn routes() -> Router<()> {
         }
     });
 
-    Router::new()
+    let mut router = Router::new()
         .route("/blocks/sse", get(latest_block_sse))
         .route("/txs/sse", get(latest_txs_sse))
-        .with_state(state)
+        .with_state(state);
+
+    if CONFIG.is_dev {
+        info!("Enabling CORS for /latest");
+        router = router.route_layer(CorsLayer::new().allow_origin(Any));
+    }
+
+    router
 }
 
 pub async fn get_latest_block() -> Result<Value, Error> {

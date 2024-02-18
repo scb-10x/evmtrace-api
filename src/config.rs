@@ -19,6 +19,7 @@ strike! {
         ,
         pub redis: String,
         pub port: u16,
+        pub is_dev: bool,
     }
 }
 
@@ -36,6 +37,7 @@ impl Config {
                 .unwrap_or("8080".to_string())
                 .parse()
                 .expect("PORT must be a number"),
+            is_dev: var("MODE").map(|m| m == "dev").unwrap_or_default(),
         }
     }
 

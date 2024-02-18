@@ -8,6 +8,7 @@ use anyhow::{anyhow, Error};
 use axum::{serve, Router};
 use log::{error, info};
 use tokio::net::TcpListener;
+use tower_http::cors::CorsLayer;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 use zkscan_api::{api, config::CONFIG};
@@ -39,7 +40,9 @@ async fn main() -> Result<(), Error> {
         .compact()
         .init();
 
-    let app = Router::new().nest("/api/v1/", api::routes());
+    let app = Router::new()
+        .nest("/api/v1/", api::routes())
+        .route_layer(CorsLayer::new().allow_origin(["https://www.evmtrace.info".parse()?]));
     let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, CONFIG.port)).await?;
     info!("Server is listening on http://0.0.0.0:{}", CONFIG.port,);
     serve(listener, app)
