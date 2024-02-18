@@ -79,12 +79,17 @@ pub async fn all_tags(State(state): State<AppState>) -> Result<Json<Value>, AppE
     let postgres = state.postgres_pool.get().await?;
 
     let results = postgres
-        .query("SELECT tag FROM tags GROUP BY tag", &[])
+        .query("SELECT COUNT(*) AS count, tag FROM tags GROUP BY tag", &[])
         .await?;
 
     let data = results
         .into_iter()
-        .map(|row| Ok::<_, Error>(row.try_get::<_, String>("tag")?))
+        .map(|row| {
+            Ok::<_, Error>(json!({
+                "tag": row.try_get::<_, String>("tag")?,
+                "count": row.try_get::<_, i64>("count")?,
+            }))
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Json(json!({ "data": data })))
