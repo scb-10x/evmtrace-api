@@ -39,8 +39,11 @@ pub fn routes() -> Router<()> {
         .with_state(STATE.clone())
 }
 
-pub async fn proxy_address(Path(address): Path<String>) -> Result<Json<Value>, AppError> {
-    let postgres = STATE.postgres_pool.get().await?;
+pub async fn proxy_address(
+    Path(address): Path<String>,
+    State(state): State<AppState>,
+) -> Result<Json<Value>, AppError> {
+    let postgres = state.postgres_pool.get().await?;
     let address = to_checksum(&Address::from_str(&address)?, None);
 
     let results = postgres
