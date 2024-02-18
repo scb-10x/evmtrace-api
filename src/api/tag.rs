@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 
 use crate::{
     error::AppError,
-    middleware::ShortAlwaysCacheMiddleware,
+    middleware::LongAlwaysCacheMiddleware,
     state::{AppState, STATE},
 };
 
@@ -18,7 +18,7 @@ pub fn routes() -> Router<()> {
         .route("/:address", get(tag_address))
         .route_layer(middleware::from_fn_with_state(
             STATE.clone(),
-            ShortAlwaysCacheMiddleware::<false>::handler,
+            LongAlwaysCacheMiddleware::<false>::handler,
         ))
         .with_state(STATE.clone())
 }
