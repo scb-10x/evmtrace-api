@@ -11,19 +11,58 @@ use serde_json::{from_str, json, Number, Value};
 
 use crate::{
     error::AppError,
-    middleware::ShortAlwaysCacheMiddleware,
+    middleware::{LongAlwaysCacheMiddleware, ShortAlwaysCacheMiddleware},
     state::{AppState, STATE},
     types::Pagination,
 };
 
 pub fn routes() -> Router<()> {
     Router::new()
-        .route("/:address", get(address))
-        .route_layer(middleware::from_fn_with_state(
-            STATE.clone(),
-            ShortAlwaysCacheMiddleware::<true>::handler,
-        ))
+        .nest(
+            "/",
+            Router::new().route("/:address", get(address)).route_layer(
+                middleware::from_fn_with_state(
+                    STATE.clone(),
+                    ShortAlwaysCacheMiddleware::<true>::handler,
+                ),
+            ),
+        )
+        .nest(
+            "/proxy",
+            Router::new()
+                .route("/:address", get(proxy_address))
+                .route_layer(middleware::from_fn_with_state(
+                    STATE.clone(),
+                    LongAlwaysCacheMiddleware::<false>::handler,
+                )),
+        )
         .with_state(STATE.clone())
+}
+
+pub async fn proxy_address(Path(address): Path<String>) -> Result<Json<Value>, AppError> {
+    let postgres = STATE.postgres_pool.get().await?;
+    let address = to_checksum(&Address::from_str(&address)?, None);
+
+    let results = postgres
+        .query(
+            "SELECT logic, chainid AS chain_id FROM proxy_destination WHERE proxy = $1",
+            &[&address],
+        )
+        .await?;
+
+    let data = results
+        .iter()
+        .map(|result| {
+            Ok(json!({
+                "logic": result.try_get::<_, String>("logic")?,
+                "chain_id": result.try_get::<_, i64>("chain_id")?,
+            }))
+        })
+        .collect::<Result<Vec<_>, AppError>>()?;
+
+    Ok(Json(json!({
+        "data": data,
+    })))
 }
 
 pub async fn address(
