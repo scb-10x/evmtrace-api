@@ -64,7 +64,12 @@ pub async fn tag(
 
     let data = results
         .into_iter()
-        .map(|row| Ok::<_, Error>(row.try_get::<_, String>("address")?))
+        .map(|row| {
+            Ok::<_, Error>(json!({
+                "address": row.try_get::<_, String>("address")?,
+                "tags": row.try_get::<_, Vec<String>>("tags")?,
+            }))
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Json(json!({ "data": data })))
