@@ -30,7 +30,7 @@ pub async fn tx_hash(
 
     let results = postgres
         .query(
-            "SELECT transactions.chain_id, from_address, to_address, transaction_hash, transaction_index, block_number, blocks.timestamp AS block_timestamp, value, input, gas_used_total, gas_used_first_degree, error, function_signature, sig_names.name AS function_name, ec_pairing_count, ec_recover_count, ec_recover_addresses, ec_pairing_input_sizes, closest_address FROM transactions LEFT JOIN sig_names ON transactions.function_signature = sig_names.sig LEFT JOIN blocks ON blocks.chain_id = transactions.chain_id AND blocks.number = transactions.block_number WHERE transaction_hash = $1 LIMIT 1",
+            "SELECT transactions.chain_id, from_address, to_address, transaction_hash, transaction_index, block_number, blocks.timestamp AS block_timestamp, value, input, gas_used_total, gas_used_first_degree, error, function_signature, sig_names.name AS function_name, ec_pairing_count, ec_recover_count, ec_recover_addresses, closest_address FROM transactions LEFT JOIN sig_names ON transactions.function_signature = sig_names.sig LEFT JOIN blocks ON blocks.chain_id = transactions.chain_id AND blocks.number = transactions.block_number WHERE transaction_hash = $1 LIMIT 1",
             &[&hash],
         )
         .await?;
@@ -55,7 +55,6 @@ pub async fn tx_hash(
             "ec_pairing_count": result.try_get::<_, i16>("ec_pairing_count")?,
             "ec_recover_count": result.try_get::<_, i16>("ec_recover_count")?,
             "ec_recover_addresses": result.try_get::<_, Vec<String>>("ec_recover_addresses")?,
-            "ec_pairing_input_sizes": result.try_get::<_, Vec<i32>>("ec_pairing_input_sizes")?,
             "closest_address": result.try_get::<_, Vec<String>>("closest_address")?,
         }
     })))
