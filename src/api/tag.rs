@@ -79,7 +79,10 @@ pub async fn all_tags(State(state): State<AppState>) -> Result<Json<Value>, AppE
     let postgres = state.postgres_pool.get().await?;
 
     let results = postgres
-        .query("SELECT COUNT(*) AS count, tag FROM tags GROUP BY tag", &[])
+        .query(
+            "SELECT COUNT(*) AS count, tag FROM tags GROUP BY tag ORDER BY 1 DESC",
+            &[],
+        )
         .await?;
 
     let data = results
