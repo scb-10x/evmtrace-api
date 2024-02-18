@@ -47,7 +47,7 @@ pub async fn tag(
 
     let results = postgres
         .query(
-            "SELECT address, ARRAY_AGG(tag) AS tags
+            "SELECT address, ARRAY_AGG(DISTINCT tag) AS tags
             FROM tags
             WHERE address IN (
                 SELECT address
@@ -100,7 +100,7 @@ pub async fn tag_address(
 
     let results = postgres
         .query(
-            "SELECT address, ARRAY_AGG(tag) as tags FROM tags WHERE address = ANY($1) GROUP BY address",
+            "SELECT address, ARRAY_AGG(DISTINCT tag) as tags FROM tags WHERE address = ANY($1) GROUP BY address",
             &[&address_list],
         )
         .await?;
