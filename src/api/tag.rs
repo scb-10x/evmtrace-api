@@ -47,7 +47,7 @@ pub async fn tag(
 
     let results = postgres
         .query(
-            "SELECT address FROM tags WHERE tag = $1 ORDER BY id DESC OFFET $2 LIMIT $3",
+            "SELECT address FROM tags WHERE tag = $1 ORDER BY id DESC OFFSET $2 LIMIT $3",
             &[&tag, &pagination.offset(), &pagination.limit()],
         )
         .await?;
