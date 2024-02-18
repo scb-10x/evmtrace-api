@@ -1,6 +1,6 @@
 use anyhow::Error;
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     middleware,
     routing::get,
     Json, Router,
@@ -11,16 +11,68 @@ use crate::{
     error::AppError,
     middleware::LongAlwaysCacheMiddleware,
     state::{AppState, STATE},
+    types::Pagination,
 };
 
 pub fn routes() -> Router<()> {
     Router::new()
-        .route("/:address", get(tag_address))
-        .route_layer(middleware::from_fn_with_state(
-            STATE.clone(),
-            LongAlwaysCacheMiddleware::<false>::handler,
-        ))
+        .nest(
+            "/",
+            Router::new()
+                .route("/all", get(all_tags))
+                .route("/:address", get(tag_address))
+                .route_layer(middleware::from_fn_with_state(
+                    STATE.clone(),
+                    LongAlwaysCacheMiddleware::<false>::handler,
+                )),
+        )
+        .nest(
+            "/tags",
+            Router::new()
+                .route("/:tag", get(tag))
+                .route_layer(middleware::from_fn_with_state(
+                    STATE.clone(),
+                    LongAlwaysCacheMiddleware::<true>::handler,
+                )),
+        )
         .with_state(STATE.clone())
+}
+
+pub async fn tag(
+    Path(tag): Path<String>,
+    State(state): State<AppState>,
+    Query(pagination): Query<Pagination>,
+) -> Result<Json<Value>, AppError> {
+    let postgres = state.postgres_pool.get().await?;
+
+    let results = postgres
+        .query(
+            "SELECT address FROM tags WHERE tag = $1 ORDER BY id DESC OFFET $2 LIMIT $3",
+            &[&tag, &pagination.offset(), &pagination.limit()],
+        )
+        .await?;
+
+    let data = results
+        .into_iter()
+        .map(|row| Ok::<_, Error>(row.try_get::<_, String>("address")?))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(Json(json!({ "data": data })))
+}
+
+pub async fn all_tags(State(state): State<AppState>) -> Result<Json<Value>, AppError> {
+    let postgres = state.postgres_pool.get().await?;
+
+    let results = postgres
+        .query("SELECT tag FROM tags GROUP BY tag", &[])
+        .await?;
+
+    let data = results
+        .into_iter()
+        .map(|row| Ok::<_, Error>(row.try_get::<_, String>("tag")?))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(Json(json!({ "data": data })))
 }
 
 pub async fn tag_address(
