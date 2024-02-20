@@ -20,6 +20,7 @@ pub fn routes() -> Router<()> {
             "/",
             Router::new()
                 .route("/all", get(all_tags))
+                .route("/all_by_chain", get(tag_by_chain))
                 .route("/:address", get(tag_address))
                 .route_layer(middleware::from_fn_with_state(
                     STATE.clone(),
@@ -36,6 +37,32 @@ pub fn routes() -> Router<()> {
                 )),
         )
         .with_state(STATE.clone())
+}
+
+pub async fn tag_by_chain(State(state): State<AppState>) -> Result<Json<Value>, AppError> {
+    let postgres = state.postgres_pool.get().await?;
+
+    let results = postgres
+        .query(
+            "
+                WITH tc AS (SELECT DISTINCT tag, COUNT(*), chainid FROM tags GROUP BY chainid, tag)
+                SELECT chainid AS chain_id, json_agg(json_build_object('tag', tag, 'count', count)) AS tags FROM tc GROUP BY chainid
+            ",
+            &[],
+        )
+        .await?;
+
+    let data = results
+        .into_iter()
+        .map(|row| {
+            Ok::<_, Error>(json!({
+                "chain_id": row.try_get::<_, i64>("chain_id")?,
+                "tags": row.try_get::<_, Value>("tags")?,
+            }))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(Json(json!({ "data": data })))
 }
 
 pub async fn tag(
